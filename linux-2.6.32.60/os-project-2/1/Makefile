@@ -1,6 +1,6 @@
 .PHONY: clean
-CFLAGS=-O2
-test_simplle_rr:
+CFLAGS=-O0
+sched_test:
 	gcc $(CFLAGS) sched_test.c -lpthread -o sched_test
 clean:
 	rm -f sched_test
