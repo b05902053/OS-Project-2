@@ -2123,7 +2123,13 @@ unsigned int get_rr_interval_fair(struct rq *rq, struct task_struct *task)
  * All the scheduling class methods:
  */
 static const struct sched_class fair_sched_class = {
-	.next			= &idle_sched_class,
+
+	/* + OS Proj2: next: idle_sched_class -> weighted_rr_sched_class -m -s */
+
+	.next			= &weighted_rr_sched_class,
+
+	/* + OS Proj2: next: idle_sched_class -> weighted_rr_sched_class -m -e */
+
 	.enqueue_task		= enqueue_task_fair,
 	.dequeue_task		= dequeue_task_fair,
 	.yield_task		= yield_task_fair,

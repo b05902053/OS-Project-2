@@ -343,9 +343,16 @@
 #define __NR_rt_tgsigqueueinfo	335
 #define __NR_perf_event_open	336
 
+/* + OS Proj2: add two system calls -s */
+
+#define __NR_sched_weighted_rr_getquantum	337
+#define __NR_sched_weighted_rr_setquantum	338
+
 #ifdef __KERNEL__
 
-#define NR_syscalls 337
+#define NR_syscalls 339
+
+/* + OS Proj2: add two system calls -e */
 
 #define __ARCH_WANT_IPC_PARSE_VERSION
 #define __ARCH_WANT_OLD_READDIR

@@ -131,6 +131,23 @@ static inline int task_has_rt_policy(struct task_struct *p)
 	return rt_policy(p->policy);
 }
 
+/* + OS Proj2: weighted_rr_policy(int policy) -a -s */
+
+static inline int weighted_rr_policy(int policy)
+{
+	if(unlikely(policy == SCHED_WEIGHTED_RR))
+		return 1;
+	return 0;
+}
+
+
+static inline int task_has_weighted_rr_policy(struct task_struct *p)
+{
+	return weighted_rr_policy(p->policy);
+}
+
+/* + OS Proj2: weighted_rr_policy(int policy) -a -e */
+
 /*
  * This is the priority-queue data structure of the RT scheduling class:
  */
@@ -406,6 +423,16 @@ struct cfs_rq {
 #endif
 };
 
+/* + OS Proj2: struct weighted_rr_rq -a -s */
+
+struct weighted_rr_rq {
+	struct list_head queue;
+	unsigned long nr_running;
+	struct list_head *weighted_rr_load_balance_head, *weighted_rr_load_balance_curr;
+};
+
+/* + OS Proj2: struct weighted_rr_rq -a -e */
+
 /* Real-Time classes' related field in a runqueue: */
 struct rt_rq {
 	struct rt_prio_array active;
@@ -502,6 +529,13 @@ struct rq {
 	u64 nr_switches;
 
 	struct cfs_rq cfs;
+
+	/* + OS Proj2: struct cfs_rq cfs -a -s */
+
+	struct weighted_rr_rq weighted_rr;
+
+	/* + OS Proj2: struct cfs_rq cfs -a -e */
+
 	struct rt_rq rt;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -1896,8 +1930,22 @@ static void sched_irq_time_avg_update(struct rq *rq, u64 curr_irq_time) { }
 
 #include "sched_stats.h"
 #include "sched_idletask.c"
+
+/* + OS Proj2: sched_weighted_rr.c -a -s */
+
+#include "sched_weighted_rr.c"
+
+/* + OS Proj2: sched_weighted_rr.c -a -e */
+
 #include "sched_fair.c"
 #include "sched_rt.c"
+
+/* + OS Proj2: weighted_rr_time_slice -a -s */
+
+int weighted_rr_time_slice = DEF_TIMESLICE / 1000;
+
+/* + OS Proj2: weighted_rr_time_slice -a -e */
+
 #ifdef CONFIG_SCHED_DEBUG
 # include "sched_debug.c"
 #endif
@@ -2685,6 +2733,14 @@ static void __sched_fork(struct task_struct *p)
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	INIT_HLIST_HEAD(&p->preempt_notifiers);
 #endif
+
+	/* + OS Proj2: &p->weighted_rr_list_item -a -s */
+
+	INIT_LIST_HEAD(&p->weighted_rr_list_item);
+	p->task_time_slice = weighted_rr_time_slice;
+	p->weighted_time_slice = weighted_rr_time_slice;
+
+	/* + OS Proj2: &p->weighted_rr_list_item -a -e */
 }
 
 /*
@@ -2729,8 +2785,12 @@ void sched_fork(struct task_struct *p, int clone_flags)
 	 */
 	p->prio = current->normal_prio;
 
-	if (!rt_prio(p->prio))
+	/* + OS Proj2: p->sched_class != &weighted_rr_sched_class -m -s */
+
+	if (!rt_prio(p->prio) && (p->sched_class != &weighted_rr_sched_class))
 		p->sched_class = &fair_sched_class;
+
+	/* + OS Proj2: p->sched_class != &weighted_rr_sched_class -m -e */
 
 	if (p->sched_class->task_fork)
 		p->sched_class->task_fork(p);
@@ -6284,8 +6344,18 @@ void rt_mutex_setprio(struct task_struct *p, int prio)
 
 	if (rt_prio(prio))
 		p->sched_class = &rt_sched_class;
-	else
-		p->sched_class = &fair_sched_class;
+	else {
+
+		/*+ OS Proj2: consider weighted_rr_sched_class */
+
+		if (prev_class == &weighted_rr_sched_class)
+			p->sched_class = &weighted_rr_sched_class;
+		else
+			p->sched_class = &fair_sched_class;
+
+		/*+ OS Proj2: consider weighted_rr_sched_class */
+
+	}
 
 	p->prio = prio;
 
@@ -6472,6 +6542,15 @@ __setscheduler(struct rq *rq, struct task_struct *p, int policy, int prio)
 	case SCHED_RR:
 		p->sched_class = &rt_sched_class;
 		break;
+
+	/* + OS Proj2: SCHED_WEIGHTED_RR -a -s */
+
+	case SCHED_WEIGHTED_RR:
+		p->sched_class = &weighted_rr_sched_class;
+		break;
+
+	/* + OS Proj2: SCHED_WEIGHTED_RR -a -e */
+
 	}
 
 	p->rt_priority = prio;
@@ -6508,6 +6587,7 @@ static int __sched_setscheduler(struct task_struct *p, int policy,
 
 	/* may grab non-irq protected spin_locks */
 	BUG_ON(in_interrupt());
+
 recheck:
 	/* double check policy once rq lock held */
 	if (policy < 0) {
@@ -6518,8 +6598,8 @@ recheck:
 		policy &= ~SCHED_RESET_ON_FORK;
 
 		if (policy != SCHED_FIFO && policy != SCHED_RR &&
-				policy != SCHED_NORMAL && policy != SCHED_BATCH &&
-				policy != SCHED_IDLE)
+		policy != SCHED_NORMAL && policy != SCHED_BATCH &&
+		policy != SCHED_IDLE && policy != SCHED_WEIGHTED_RR) //+ OS Proj2: weighted_rr
 			return -EINVAL;
 	}
 
@@ -7094,6 +7174,8 @@ SYSCALL_DEFINE1(sched_get_priority_max, int, policy)
 	case SCHED_NORMAL:
 	case SCHED_BATCH:
 	case SCHED_IDLE:
+	//+ OS Proj2: weighted_rr
+	case SCHED_WEIGHTED_RR:
 		ret = 0;
 		break;
 	}
@@ -7119,6 +7201,8 @@ SYSCALL_DEFINE1(sched_get_priority_min, int, policy)
 	case SCHED_NORMAL:
 	case SCHED_BATCH:
 	case SCHED_IDLE:
+	//+ OS Proj2: weighted_rr
+	case SCHED_WEIGHTED_RR:
 		ret = 0;
 	}
 	return ret;
@@ -7168,6 +7252,22 @@ out_unlock:
 	rcu_read_unlock();
 	return retval;
 }
+
+/* + OS Proj2: SYSCALL_DEFINE -a -s */
+
+SYSCALL_DEFINE0(sched_weighted_rr_getquantum)
+{
+	return weighted_rr_time_slice;
+}
+
+
+SYSCALL_DEFINE1(sched_weighted_rr_setquantum, unsigned int, quantum)
+{
+	weighted_rr_time_slice = quantum;
+	return;
+}
+
+/* + OS Proj2: SYSCALL_DEFINE -a -e */
 
 static const char stat_nam[] = TASK_STATE_TO_CHAR_STR;
 
@@ -9558,6 +9658,15 @@ static void init_cfs_rq(struct cfs_rq *cfs_rq, struct rq *rq)
 	cfs_rq->min_vruntime = (u64)(-(1LL << 20));
 }
 
+/* + OS Proj2: init_weighted_rr_rq -a -s */
+
+static void init_weighted_rr_rq(struct weighted_rr_rq * weighted_rr_rq)
+{
+	INIT_LIST_HEAD(&weighted_rr_rq->queue);
+}
+
+/* + OS Proj2: init_weighted_rr_rq -a -e */
+
 static void init_rt_rq(struct rt_rq *rt_rq, struct rq *rq)
 {
 	struct rt_prio_array *array;
@@ -9730,6 +9839,13 @@ void __init sched_init(void)
 		rq->calc_load_update = jiffies + LOAD_FREQ;
 		init_cfs_rq(&rq->cfs, rq);
 		init_rt_rq(&rq->rt, rq);
+
+		/* + OS Proj2: &rq->weighted_rr -a -s */
+
+		init_weighted_rr_rq(&rq->weighted_rr);
+
+		/* + OS Proj2: &rq->weighted_rr -a -e */
+
 #ifdef CONFIG_FAIR_GROUP_SCHED
 		init_task_group.shares = init_task_group_load;
 		INIT_LIST_HEAD(&rq->leaf_cfs_rq_list);

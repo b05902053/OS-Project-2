@@ -336,3 +336,5 @@ ENTRY(sys_call_table)
 	.long sys_pwritev
 	.long sys_rt_tgsigqueueinfo	/* 335 */
 	.long sys_perf_event_open
+	.long sys_sched_weighted_rr_getquantum	/* RTS Proj2: weighted_rr */
+	.long sys_sched_weighted_rr_setquantum	/* RTS Proj2: weighted_rr */

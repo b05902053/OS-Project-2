@@ -38,6 +38,8 @@
 #define SCHED_BATCH		3
 /* SCHED_ISO: reserved but not implemented yet */
 #define SCHED_IDLE		5
+//+ OS Proj2: weighted_rr
+#define SCHED_WEIGHTED_RR   6
 /* Can be ORed in to make sure the process is reverted back to SCHED_NORMAL on fork */
 #define SCHED_RESET_ON_FORK     0x40000000
 
@@ -1235,6 +1237,12 @@ struct task_struct {
 	struct sched_entity se;
 	struct sched_rt_entity rt;
 
+	/* + OS Proj2: weighted_rr_list_item -a -s */
+
+	struct list_head weighted_rr_list_item;
+
+	/* + OS Proj2: weighted_rr_list_item -a -e */
+
 #ifdef CONFIG_PREEMPT_NOTIFIERS
 	/* list of struct preempt_notifier: */
 	struct hlist_head preempt_notifiers;
@@ -1255,6 +1263,13 @@ struct task_struct {
 
 	unsigned int policy;
 	cpumask_t cpus_allowed;
+
+	/* + OS Proj2: weighted_rr -a -s */
+
+	unsigned int task_time_slice;
+	unsigned int weighted_time_slice;
+
+	/* + OS Proj2: weighted_rr -a -e */
 
 #ifdef CONFIG_TREE_PREEMPT_RCU
 	int rcu_read_lock_nesting;
@@ -2615,6 +2630,9 @@ static inline unsigned long rlimit_max(unsigned int limit)
 {
 	return task_rlimit_max(current, limit);
 }
+
+//+ OS Proj2: global variable
+extern int weighted_rr_time_slice;
 
 #endif /* __KERNEL__ */
 
