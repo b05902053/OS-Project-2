@@ -14,6 +14,8 @@
 #include <sys/resource.h>
 #include <sys/syscall.h>
 
+#include <assert.h>
+
 #define SCHED_NORMAL 0
 #define SCHED_WEIGHTED_RR 6
 
@@ -66,7 +68,7 @@ int main(int argc, char *argv[])
 	struct thread_args *targs;
 	pthread_attr_t attr;
 	int i;
-	char cur;
+	char cur = '\0';
 	
 	if( argc != 5 )
 		fail("Invalid arguments count");
@@ -136,13 +138,15 @@ int main(int argc, char *argv[])
 	//+ print val_buf results
 	for (i = 0; i < total_num_chars; i++) 
 	{
-		if (cur != val_buf[i]) 
+		if (val_buf[i] != '\0' && cur != val_buf[i] )
 		{
 			cur = val_buf[i];
-			printf("%c", cur);;
+			assert (cur > 32);
+			putchar(cur);
 		}
 	}
-	printf("\n");
+
+	putchar('\n');
 	
 	//+ reset time quantum
 	syscall (SYS_weighted_rr_setquantum, old_quantum);
